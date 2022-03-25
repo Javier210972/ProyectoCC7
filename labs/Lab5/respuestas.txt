@@ -1,0 +1,18 @@
+Creación y definición de un Thread:
+    La creación y definición de un thread dentro del código es con
+    el propósito de paralelizar tareas dentro de un programa. Para
+    esto necesitamos una función la cuál es la que va a llevar la tarea
+    en paralelo. Es importante que luego de crear y poner a correr el thread
+    se haga un join para que el main thread espere a que los threads que creó
+    esperen.
+Implementación de Locks
+    Los locks son la respuesta a la concurrencia. Es decir cuando se quiere acceder
+    a un mismo recurso por varios threads "al mismo tiempo". Con esto hacemos
+    encerramos entre lock aquire y release la llamada sección crítica que es
+    donde se usan recursos compartidos.
+Implementación de Variables de Condición.
+    Son un avanzado concepto de programación utilizado en un sistema
+    que esté paralelizado con varios threads. Se utiliza cuando hay un recurso
+    por el cual se quiere "esperar" y que no se pueda acceder porque esté usando
+    recursos compartidos (con lock). Este tiene tres instrucciones, wait, signal
+    y broadcast.

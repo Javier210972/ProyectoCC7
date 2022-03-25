@@ -104,6 +104,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+
+  initial_thread->forceExecution = 0; 
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -141,8 +143,8 @@ thread_tick (void)
     kernel_ticks++;
 
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();
+  /*if (++thread_ticks >= TIME_SLICE)
+    intr_yield_on_return ();*/
 }
 
 /* Prints thread statistics. */
@@ -507,6 +509,18 @@ next_thread_to_run (void)
     return idle_thread;
   else{
 
+    struct list_elem *iter = list_begin(&ready_list);
+	  while(iter != list_end(&ready_list) ){
+      struct thread *thread_actual= list_entry(iter, struct thread, elem);
+      if(thread_actual->forceExecution == 1){
+        list_remove(iter);
+        thread_actual->forceExecution = 0;
+        return thread_actual;
+      }
+      iter = list_next(iter);
+    }
+
+        
     /* -:D Remove and return most important thread */
     struct list_elem *max_priority_thread = list_max(&ready_list, less_priority_criteria, NULL);  
     struct thread *t = list_entry (max_priority_thread, struct thread, elem);

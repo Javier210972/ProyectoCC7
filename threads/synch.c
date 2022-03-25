@@ -113,11 +113,21 @@ sema_up (struct semaphore *sema)
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
-  if (!list_empty (&sema->waiters)) 
-    thread_unblock (list_entry (list_pop_front (&sema->waiters),
-                                struct thread, elem));
+  if (!list_empty (&sema->waiters)){
+
+    struct list_elem *max_priority_thread = list_max(&(sema->waiters), less_priority_criteria, NULL);  
+    struct thread *t = list_entry (max_priority_thread, struct thread, elem);
+    list_remove(max_priority_thread);
+
+    //printf("afihlbh\n");
+    thread_unblock(t);
+    t->forceExecution = 1;
+    //thread_unblock (list_entry (list_pop_front (&sema->waiters),struct thread, elem));
+  } 
+    
   sema->value++;
   intr_set_level (old_level);
+  check_and_set_most_important_thread();
 }
 
 static void sema_test_helper (void *sema_);
@@ -179,6 +189,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  lock->old_priority = -777;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -196,6 +207,11 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  if(lock->holder != NULL && thread_get_priority() > lock->holder->priority){
+    //printf("Priority setted from %d to %d \n", lock->old_priority, lock->holder->priority);
+    lock->old_priority = lock->holder->priority;    
+    lock->holder->priority = thread_get_priority();        
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
@@ -231,8 +247,23 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
 
-  lock->holder = NULL;
-  sema_up (&lock->semaphore);
+  if(lock->old_priority != -777){
+    
+    int oldP = lock->old_priority;
+    lock->old_priority = -777;
+    
+
+    lock->holder = NULL;
+    thread_current()->priority = oldP;
+    sema_up (&lock->semaphore);
+    
+    //thread_set_priority(oldP);
+    
+  }else{
+    lock->holder = NULL;
+    sema_up (&lock->semaphore);    
+  }
+  //check_and_set_most_important_thread();
 }
 
 /* Returns true if the current thread holds LOCK, false

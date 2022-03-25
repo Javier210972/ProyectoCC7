@@ -95,6 +95,7 @@ struct thread
 
     uint64_t sleep_time;  /* -:D Time of thread sleep*/
     struct list_elem sleepelem;  /* -:D List element to slept list*/
+    int forceExecution; /* -:D Flag to force thread execution in next_thread_to_run*/
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

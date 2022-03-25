@@ -1,0 +1,18 @@
+1. En base a sus pruebas, ¿Qué algoritmo tuvo mejores
+resultados? Justifique.
+    - El algoritmo SSTF tuvo en  general mejor rendimiento al darle prioridad
+    a los más cercanos. Reduciendo el tiempo entre lecturas/escrituras. Aunque
+    depende en enorme medida de la distribucion de la data.
+
+2. ¿Cómo funciona un SSD (Disco de Estado Sólido)?
+    - Este, al contrario de un HDD, es una placa o circuito más parecida a la
+    memoria RAM con la diferencia que este obviamente tiene persistencia de datos
+    también a la hora de apagarse el equipo.
+
+3. ¿Cuál es el comportamiento de estos algoritmos en un SSD?
+    - Hay algunos que no tienen sentido en un SSD como SCAN y CSCAN ya que 
+    ya no hay ningún componente mecánico del que aprovechar sus giros.
+
+4. ¿Existen Disk Scheduling para un SSD? Justifique.
+    - Puede existir ya que es posible la concurrencia en estos dispositivos, pero 
+    se implementaría de forma completamente distinta a la de los HDD.
