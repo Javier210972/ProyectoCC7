@@ -32,6 +32,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+static struct list all_locks;
+static int allLocksisDefined = 0;
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -193,6 +195,13 @@ lock_init (struct lock *lock)
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
   lock->old_priority = -777;
+
+  if(!allLocksisDefined){
+    list_init(&all_locks);
+    allLocksisDefined = 1;
+  }
+
+  list_push_back(&all_locks, &(lock->allLocksElem));
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -213,11 +222,39 @@ lock_acquire (struct lock *lock)
   if(lock->holder != NULL && thread_get_priority() > lock->holder->priority){
     //printf("Priority setted from %d to %d \n", lock->old_priority, lock->holder->priority);
     lock->old_priority = lock->holder->priority;    
-    lock->holder->priority = thread_get_priority();        
+    lock->holder->priority = thread_get_priority();      
+    recursive_donation(lock,1);
   }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
   list_push_back (&(thread_current()->holdingLocks), &(lock->holdingLocksElem));
+}
+
+void
+recursive_donation(struct lock *whoHoldsOurLock, int layer){
+  if(layer >= 8){
+    return;
+  }
+
+  struct list_elem *iter = list_begin(&(all_locks));
+  while(iter != list_end(&(all_locks)) ){
+    struct lock *lock_actual= list_entry(iter, struct lock, allLocksElem);
+
+    struct list_elem *iter2 = list_begin(&(lock_actual->semaphore.waiters));
+    while(iter2 != list_end(&(lock_actual->semaphore.waiters)) ){
+      struct thread *thread_actual= list_entry(iter2, struct thread, elem);
+      
+      if(thread_actual == whoHoldsOurLock->holder && lock_actual->holder->priority < thread_get_priority() ){   
+        lock_actual->holder->priority = thread_get_priority();
+        recursive_donation(lock_actual, layer + 1);
+      }
+
+      iter2 = list_next(iter2);
+    }
+
+    iter = list_next(iter);
+  }
+
 }
 
 /* Tries to acquires LOCK and returns true if successful or false

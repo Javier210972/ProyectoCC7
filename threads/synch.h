@@ -25,6 +25,7 @@ struct lock
 
     int old_priority;
     struct list_elem holdingLocksElem;
+    struct list_elem allLocksElem;
   };
 
 void lock_init (struct lock *);
