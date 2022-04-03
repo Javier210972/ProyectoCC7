@@ -121,7 +121,10 @@ sema_up (struct semaphore *sema)
 
     //printf("afihlbh\n");
     thread_unblock(t);
-    t->forceExecution = 1;
+    if(t->priority > thread_current()->priority){
+      t->forceExecution = 1;
+    }
+    
     //thread_unblock (list_entry (list_pop_front (&sema->waiters),struct thread, elem));
   } 
     
@@ -248,11 +251,46 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
   
-  if(lock->old_priority != -777){     
-    thread_current()->priority = lock->old_priority;
-    lock->old_priority = -777;    
+  list_remove(&(lock->holdingLocksElem));
+
+  int maxPriority = lock->old_priority;
+
+  struct list_elem *iter = list_begin(&(thread_current()->holdingLocks));
+  while(iter != list_end(&(thread_current()->holdingLocks)) ){
+    struct lock *lock_actual= list_entry(iter, struct lock, holdingLocksElem);
+    struct list_elem *iter2 = list_begin(&(lock_actual->semaphore.waiters));
+	  while(iter2 != list_end(&(lock_actual->semaphore.waiters)) ){
+      struct thread *thread_actual= list_entry(iter2, struct thread, elem);
+      
+      if(thread_actual->priority > maxPriority){
+        maxPriority = thread_actual->priority;
+      }
+
+      iter2 = list_next(iter2);
+    }
+
+    iter = list_next(iter);
   }
-  
+
+  if(lock->old_priority != -777){     
+    if(maxPriority == lock->old_priority){
+      thread_current()->priority = thread_current()->myBornPriority;
+    }
+    //thread_current()->priority = lock->old_priority;    
+  }
+  //printf("%d", maxPriority);
+  if(maxPriority != lock->old_priority ){
+    if(maxPriority > thread_current()->myBornPriority){
+      thread_current()->priority = maxPriority;
+    }
+    
+  }
+
+  /*if(maxPriority == lock->old_priority){
+    thread_current()->priority = thread_current()->myBornPriority;
+  }*/
+
+  lock->old_priority = -777;    
   lock->holder = NULL;
   sema_up (&lock->semaphore); 
 }
