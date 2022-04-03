@@ -381,9 +381,42 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
 
-  if (!list_empty (&cond->waiters)) 
+  /*if (!list_empty (&cond->waiters)) 
     sema_up (&list_entry (list_pop_front (&cond->waiters),
-                          struct semaphore_elem, elem)->semaphore);
+                          struct semaphore_elem, elem)->semaphore);*/
+
+  if(!list_empty (&cond->waiters)){
+
+    struct semaphore_elem *maxPrioritySemaphore;
+    int isMPSDefined = 0;
+    int maxPriority = 0;
+
+    struct list_elem *iter = list_begin(&(cond->waiters));
+    while(iter != list_end(&(cond->waiters)) ){
+      struct semaphore_elem *sema_actual= list_entry(iter, struct semaphore_elem, elem);
+
+      struct list_elem *iter2 = list_begin(&(sema_actual->semaphore.waiters));
+      while(iter2 != list_end(&(sema_actual->semaphore.waiters)) ){
+        struct thread *thread_actual= list_entry(iter2, struct thread, elem);
+        
+        if(thread_actual->priority > maxPriority){
+          maxPriority = thread_actual->priority;
+          maxPrioritySemaphore = sema_actual;
+          thread_actual->forceExecution = 1;
+        }
+
+        iter2 = list_next(iter2);
+      }
+
+      iter = list_next(iter);
+    }
+
+    list_remove(&(maxPrioritySemaphore->elem));
+    /*printf("Prioridad de %s  %d \n", thread_current()->name , thread_current()->priority);*/
+    sema_up(&(maxPrioritySemaphore->semaphore));
+
+
+  }
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by

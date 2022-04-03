@@ -357,6 +357,7 @@ thread_set_priority (int new_priority)
   }
 
   thread_current ()->priority = new_priority;
+  thread_current()->myBornPriority = new_priority;
   //-:D
   check_and_set_most_important_thread();
 }
