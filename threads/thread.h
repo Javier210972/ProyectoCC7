@@ -97,6 +97,8 @@ struct thread
     struct list_elem sleepelem;  /* -:D List element to slept list*/
     int myBornPriority; /* -:D Constant copy of original priority*/
     int forceExecution; /* -:D Flag to force thread execution in next_thread_to_run*/
+    int changeBasePriorityOnRelease;
+    int basePriorityOnRelease;
     struct list holdingLocks;  /* -:D List locks that this thread is holding*/
 
 #ifdef USERPROG

@@ -274,6 +274,11 @@ lock_release (struct lock *lock)
 
   if(lock->old_priority != -777){     
     if(maxPriority == lock->old_priority){
+      if(thread_current()->changeBasePriorityOnRelease == 1){
+        thread_current()->myBornPriority = thread_current()->basePriorityOnRelease;        
+
+        thread_current()->changeBasePriorityOnRelease = 0;
+      }
       thread_current()->priority = thread_current()->myBornPriority;
     }
     //thread_current()->priority = lock->old_priority;    

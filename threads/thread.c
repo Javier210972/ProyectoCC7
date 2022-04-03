@@ -106,6 +106,8 @@ thread_init (void)
   initial_thread->tid = allocate_tid ();
 
   initial_thread->forceExecution = 0; 
+  initial_thread->changeBasePriorityOnRelease = 0;
+  initial_thread->basePriorityOnRelease = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -347,6 +349,12 @@ thread_set_priority (int new_priority)
 {
   ASSERT(new_priority <= PRI_MAX);
   ASSERT(new_priority >= PRI_MIN);
+
+  if((int)(list_size(&(thread_current()->holdingLocks))) != 0){
+    thread_current()->changeBasePriorityOnRelease = 1;
+    thread_current()->basePriorityOnRelease = new_priority;
+    return;
+  }
 
   thread_current ()->priority = new_priority;
   //-:D
