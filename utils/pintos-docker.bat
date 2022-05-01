@@ -2,7 +2,7 @@
 
 set dockerid="%pintos%\.container-id"
 
-if not exist "%pintos%\.container-id" (docker create -t -i -v "%pintos%":/root/pintos -v "%pintos%\pintos-docker":/root/host --cidfile %dockerid% "gbenm/pintos:latest")
+if not exist "%pintos%\.container-id" (docker create -t -i -v "%pintos%":/root/pintos -v "%pintos%\pintos-docker":/root/host -p 1234:1234 --cidfile %dockerid% "gbenm/pintos:latest")
 
 set /p dockerid=<%dockerid%
 

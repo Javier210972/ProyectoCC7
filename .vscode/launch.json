@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Start Debugging",
+      "type": "gdb",
+      "request": "attach",
+      "remote": true,
+      "target": ":1234",
+      "env": {
+        "GDBMACROS": "/root/pintos/misc/gdb-macros"
+      },
+      "debugger_args": [
+        "-x",
+        "/root/pintos/misc/gdb-macros"
+      ],
+      "executable": "/root/pintos/threads/build/kernel.o",
+      "cwd": "/root/pintos/threads/build",
+      "valuesFormatting": "prettyPrinters",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": false
+        }
+      ],
+      "autorun": [
+        "-enable-pretty-printing",
+        "b threads/thread.c:106",
+        "b threads/synch.c:229"
+      ]
+    }
+  ]
+}

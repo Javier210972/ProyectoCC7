@@ -8,7 +8,7 @@ dockerid=$pintos/.container-id
 
 if [ ! -f "$dockerid" ]; then
     docker create -t -i -v $PINTOS_HOME:/root/pintos \
-    -v $PINTOS_HOME/pintos-docker:/root/host --cidfile $dockerid gbenm/pintos:latest
+    -v $PINTOS_HOME/pintos-docker:/root/host -p 1234:1234 --cidfile $dockerid gbenm/pintos:latest
 fi
 
 dockerid=`cat $dockerid`
