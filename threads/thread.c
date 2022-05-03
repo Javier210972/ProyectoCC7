@@ -20,13 +20,12 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
-/* -:D List of sleeping threads waiting to be awaked
-*/
-static struct list slept_list;
-
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
+
+/* List of threads sleeping */
+static struct list sleep_list;
 
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
@@ -96,18 +95,13 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
-
-  list_init(&slept_list);
+  list_init (&sleep_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
-
-  initial_thread->forceExecution = 0; 
-  initial_thread->changeBasePriorityOnRelease = 0;
-  initial_thread->basePriorityOnRelease = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -145,8 +139,8 @@ thread_tick (void)
     kernel_ticks++;
 
   /* Enforce preemption. */
-  /*if (++thread_ticks >= TIME_SLICE)
-    intr_yield_on_return ();*/
+  if (++thread_ticks >= TIME_SLICE)
+    intr_yield_on_return ();
 }
 
 /* Prints thread statistics. */
@@ -210,8 +204,6 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  // -:D
-  check_and_set_most_important_thread();
 
   return tid;
 }
@@ -347,19 +339,7 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  ASSERT(new_priority <= PRI_MAX);
-  ASSERT(new_priority >= PRI_MIN);
-
-  if((int)(list_size(&(thread_current()->holdingLocks))) != 0){
-    thread_current()->changeBasePriorityOnRelease = 1;
-    thread_current()->basePriorityOnRelease = new_priority;
-    return;
-  }
-
   thread_current ()->priority = new_priority;
-  thread_current()->myBornPriority = new_priority;
-  //-:D
-  check_and_set_most_important_thread();
 }
 
 /* Returns the current thread's priority. */
@@ -486,8 +466,6 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  t->myBornPriority = (priority + 0);
-  list_init(&t->holdingLocks);
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -518,29 +496,8 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else{
-
-    struct list_elem *iter = list_begin(&ready_list);
-	  while(iter != list_end(&ready_list) ){
-      struct thread *thread_actual= list_entry(iter, struct thread, elem);
-      if(thread_actual->forceExecution == 1){
-        list_remove(iter);
-        thread_actual->forceExecution = 0;
-        return thread_actual;
-      }
-      iter = list_next(iter);
-    }
-
-        
-    /* -:D Remove and return most important thread */
-    struct list_elem *max_priority_thread = list_max(&ready_list, less_priority_criteria, NULL);  
-    struct thread *t = list_entry (max_priority_thread, struct thread, elem);
-    list_remove(max_priority_thread);
-    return t;
-    
-    /*return list_entry (list_pop_front (&ready_list), struct thread, elem);*/
-  }
-    
+  else
+    return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -630,10 +587,9 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-void insert_in_slept_list(int64_t ticks){
-  if(ticks < 0){
-    ticks = 0;
-  }
+
+void insert_sleep_list(int64_t ticks){
+
 	//Deshabilitamos interrupciones
 	enum intr_level old_level;
 	old_level = intr_disable ();
@@ -642,32 +598,32 @@ void insert_in_slept_list(int64_t ticks){
 	Cambiar su estatus a THREAD_BLOCKED, y definir su tiempo de expiracion */
 	
 	struct thread *thread_actual = thread_current ();
-  thread_actual->sleep_time = timer_ticks() + ticks;
+  thread_actual->sleepTime = timer_ticks() + ticks;
   
   /*Donde TIEMPO_DORMIDO es el atributo de la estructura thread que usted
 	  definió como paso inicial*/
 	
-  list_push_back(&slept_list, &thread_actual->sleepelem);
+  list_push_back(&sleep_list, &thread_actual->elem);
   thread_block();
 
   //Habilitar interrupciones
 	intr_set_level (old_level);
 }
 
-void remove_sleeping_thread(int64_t ticks){
+void remove_sleep_thread(int64_t ticks){
 
 	/*Cuando ocurra un timer_interrupt, si el tiempo del thread ha expirado
 	Se mueve de regreso a ready_list, con la funcion thread_unblock*/
 	
 	//Iterar sobre "lista_espera"
-	struct list_elem *iter = list_begin(&slept_list);
-	while(iter != list_end(&slept_list) ){
-		struct thread *thread_lista_espera= list_entry(iter, struct thread, sleepelem);
+	struct list_elem *iter = list_begin(&sleep_list);
+	while(iter != list_end(&sleep_list) ){
+		struct thread *thread_lista_espera= list_entry(iter, struct thread, elem);
 		
 		/*Si el tiempo global es mayor al tiempo que el thread permanecía dormido
 		  entonces su tiempo de dormir ha expirado*/
 		
-		if(ticks >= thread_lista_espera->sleep_time){
+		if(ticks >= thread_lista_espera-> sleepTime){
 			//Lo removemos de "lista_espera" y lo regresamos a ready_list
 			iter = list_remove(iter);
 			thread_unblock(thread_lista_espera);
@@ -677,34 +633,4 @@ void remove_sleeping_thread(int64_t ticks){
 		}
 	}
   
-}
-
-int less_priority_criteria(struct list_elem *el1,struct list_elem *el2, void *aux UNUSED){
-  struct thread *t1 = list_entry (el1, struct thread, elem);
-  struct thread *t2 = list_entry (el2, struct thread, elem);
-
-  if(t1->priority < t2->priority){
-    return 1;
-  }
-  return 0;
-}
-
-void  check_and_set_most_important_thread(void){
-
-  struct list_elem *max_priority_thread = list_max(&ready_list, less_priority_criteria, NULL);
-  struct thread *t = list_entry (max_priority_thread, struct thread, elem);
-  
-  if(t->priority > thread_get_priority()){    
-    thread_yield();    
-  }
-
-}
-
-void sort_ready_list_by_priority(void){
-  sort_generic_list_by_priority(&ready_list);
-}
-
-void sort_generic_list_by_priority(struct list *l){
-  list_sort(l, less_priority_criteria, NULL);
-  list_reverse(l);
 }
