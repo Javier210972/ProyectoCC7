@@ -467,7 +467,7 @@ cond_broadcast (struct condition *cond, struct lock *lock)
 {
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
-
+  //Este comentario deberia DESAPARECER
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
 }
